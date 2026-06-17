@@ -1,0 +1,4 @@
+pyobjc-framework-Cocoa
+pyobjc-framework-AVFoundation
+py2app
+mlx-whisper
