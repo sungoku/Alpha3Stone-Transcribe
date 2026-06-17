@@ -12,7 +12,9 @@ macOS 原生音频转录应用，基于 [MLX Whisper](https://github.com/ml-expl
 
 ## 截图
 
-<img src="icons/IMG_0502.JPG" width="200" alt="App Icon">
+<p align="center">
+  <img src="app_view.png" width="600" alt="Alpha3Stone Transcribe 主界面">
+</p>
 
 ## 系统要求
 
