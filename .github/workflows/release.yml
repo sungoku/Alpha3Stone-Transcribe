@@ -1,0 +1,42 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: macos-14  # Apple Silicon
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Miniforge
+        run: |
+          curl -fsSL -o Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-MacOSX-arm64.sh"
+          bash Miniforge3.sh -b -p $HOME/miniforge3
+          echo "$HOME/miniforge3/bin" >> $GITHUB_PATH
+
+      - name: Create conda environment
+        run: |
+          conda create -n build python=3.10 -y
+          echo "$HOME/miniforge3/envs/build/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Build .app
+        run: |
+          python setup.py py2app
+
+      - name: Create zip archive
+        run: |
+          cd dist
+          zip -r -y "Alpha3Stone-Transcribe-${{ github.ref_name }}-macOS.zip" "Alpha3Stone Transcribe.app"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/Alpha3Stone-Transcribe-${{ github.ref_name }}-macOS.zip
+          generate_release_notes: true

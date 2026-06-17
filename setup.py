@@ -1,18 +1,54 @@
 """py2app build configuration for Alpha3Stone Transcribe.
 
-Build:  ./../transcription_venv/bin/python setup.py py2app
+Build:  python setup.py py2app
 Output: dist/Alpha3Stone Transcribe.app
 """
 
 import sys
 import os
-import glob
+import site
 # py2app's modulegraph recurses deeply through scipy/numba ASTs
 sys.setrecursionlimit(10000)
 
 from setuptools import setup
 
-SITE = "../transcription_venv/lib/python3.10/site-packages"
+# Auto-detect site-packages: prefer the first writable path in current env
+SITE = site.getsitepackages()[0] if site.getsitepackages() else os.path.join(sys.prefix, "lib", f"python{sys.version_info.major}.{sys.version_info.minor}", "site-packages")
+
+# Find conda dynamic libraries needed by _ctypes / ssl
+def _find_conda_libs():
+    """Locate libffi, libssl, libcrypto from the current conda env."""
+    # sys.prefix points to the active conda env root
+    for base in (sys.prefix, os.path.dirname(sys.prefix)):
+        lib = os.path.join(base, "lib")
+        candidates = [
+            os.path.join(lib, "libffi.8.dylib"),
+            os.path.join(lib, "libssl.3.dylib"),
+            os.path.join(lib, "libcrypto.3.dylib"),
+        ]
+        if all(os.path.isfile(f) for f in candidates):
+            return candidates
+    # Fallback: use conda show / CONDA_PREFIX
+    conda_prefix = os.environ.get("CONDA_PREFIX", "")
+    if conda_prefix:
+        lib = os.path.join(conda_prefix, "lib")
+        candidates = [
+            os.path.join(lib, "libffi.8.dylib"),
+            os.path.join(lib, "libssl.3.dylib"),
+            os.path.join(lib, "libcrypto.3.dylib"),
+        ]
+        if all(os.path.isfile(f) for f in candidates):
+            return candidates
+    # Last resort: search lib*.{8,3}.dylib in sys.prefix/lib
+    lib = os.path.join(sys.prefix, "lib")
+    result = []
+    for name in ("libffi.8.dylib", "libssl.3.dylib", "libcrypto.3.dylib"):
+        path = os.path.join(lib, name)
+        if os.path.isfile(path):
+            result.append(path)
+    return result
+
+FRAMEWORKS = _find_conda_libs()
 
 # mlx is a namespace package with C extensions + Metal libs that py2app's
 # automatic scanning copies incompletely. Bundle the whole dir as a resource
@@ -88,11 +124,7 @@ OPTIONS = {
         "sympy",
     ],
     # Bundle conda's libffi (conda Python links _ctypes against @rpath/libffi.8.dylib)
-    "frameworks": [
-        os.path.expanduser("~/miniforge3/lib/libffi.8.dylib"),
-        os.path.expanduser("~/miniforge3/lib/libssl.3.dylib"),
-        os.path.expanduser("~/miniforge3/lib/libcrypto.3.dylib"),
-    ],
+    "frameworks": FRAMEWORKS,
 }
 
 setup(
